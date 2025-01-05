@@ -1,0 +1,53 @@
+#define GAS_SENSOR_PIN A0  // Analog pin connected to the gas sensor
+#define BUZZER_PIN 3       // Digital pin connected to the buzzer
+#define RL_VALUE 10        // Load resistance in kilo-ohms (depends on sensor, usually 10kΩ)
+#define V_REF 5.0          // Reference voltage of the Arduino (5V)
+#define RO_CLEAN_AIR 9.83  // Example Ro in clean air for MQ-2 sensor (in kΩ), calibrate for your sensor
+
+void setup() {
+  pinMode(BUZZER_PIN, OUTPUT);
+  Serial.begin(9600);  // Initialize serial communication
+}
+
+void loop() {
+  int sensorValue = analogRead(GAS_SENSOR_PIN);  // Read the analog value from the sensor
+  float voltage = sensorValue * (V_REF / 1023.0);  // Convert the analog value to voltage
+  float Rs = (V_REF - voltage) * RL_VALUE / voltage;  // Calculate Rs
+  float ratio = Rs / RO_CLEAN_AIR;  // Rs/Ro ratio
+
+  // Estimate gas concentrations in ppm using empirical formulas (or polynomial fitting from datasheet)
+  float ppm_LPG = pow(ratio / 0.2, -2.6);      // Example formula for LPG
+  float ppm_SMOKE = pow(ratio / 0.4, -2.3);    // Example formula for smoke
+  float ppm_ALCOHOL = pow(ratio / 0.6, -2.1);  // Example formula for alcohol
+  float ppm_PROPANE = pow(ratio / 0.3, -2.5);  // Example formula for propane
+  float ppm_HYDROGEN = pow(ratio / 0.5, -2.4); // Example formula for hydrogen
+  float ppm_METHANE = pow(ratio / 0.45, -2.7); // Example formula for methane
+  float ppm_CO = pow(ratio / 0.35, -2.2);      // Example formula for CO
+
+  // Print concentrations to the Serial Monitor
+  Serial.print("LPG: ");
+  Serial.print(ppm_LPG, 2);
+  Serial.print(" ppm | Smoke: ");
+  Serial.print(ppm_SMOKE, 2);
+  Serial.print(" ppm | Alcohol: ");
+  Serial.print(ppm_ALCOHOL, 2);
+  Serial.print(" ppm | Propane: ");
+  Serial.print(ppm_PROPANE, 2);
+  Serial.print(" ppm | Hydrogen: ");
+  Serial.print(ppm_HYDROGEN, 2);
+  Serial.print(" ppm | Methane: ");
+  Serial.print(ppm_METHANE, 2);
+  Serial.print(" ppm | CO: ");
+  Serial.print(ppm_CO, 2);
+  Serial.println(" ppm");
+
+  // Trigger buzzer for 1 millisecond if any gas exceeds a safe threshold
+  if (ppm_LPG > 1000 || ppm_SMOKE > 200 || ppm_ALCOHOL > 50 || ppm_PROPANE > 1000 ||
+      ppm_HYDROGEN > 1000 || ppm_METHANE > 1000 || ppm_CO > 35) {
+    digitalWrite(BUZZER_PIN, HIGH);  // Turn on buzzer
+    delayMicroseconds(1000);         // Keep buzzer on for 1 millisecond
+    digitalWrite(BUZZER_PIN, LOW);   // Turn off buzzer
+  }
+
+  delay(1000);  // Delay for stability
+}
